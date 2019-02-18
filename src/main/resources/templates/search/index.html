@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Color Search</title>
+  <style>
+    .colorTile {
+      width: 30px;
+      height: 30px;
+      display: inline-block;
+    }
+
+    .hueColorTile {
+      width: 30px;
+      height: 30px;
+      display: inline-block;
+    }
+
+    .hueSelection {
+      height: 100px;
+    }
+
+    .colorSelectionRow {
+      max-width: 336px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<span>This is the glorious new color search</span>
+<div class="colorTiles">
+  <div class="hueSelection">
+    <p>1. Select the desired hue</p>
+    <div class="hueColorTile" th:each="hueTile : ${hueTiles}"
+         th:style="'background-color:' + ${hueTile.getColor().rgbString()}" th:attr="data-hue=${hueTile.getName()}"></div>
+  </div>
+  <div class="colorSelection">
+    <p>2. select the desired color</p>
+    <div class="colorSelectionRow" th:each="colorTilesEntry : ${colorTiles}" th:attr="data-hue-tile=${colorTilesEntry.getKey()}">
+      <div class="colorTile" th:each="colorTile : ${colorTilesEntry.getValue()}"
+           th:style="'background-color:' + ${colorTile.getColor().rgbString()}"
+           th:attr="data-color-tile=${colorTile.getName()}"></div>
+    </div>
+  </div>
+  <div id="productArea"></div>
+</div>
+<script type="application/javascript">
+function generateProductNode(product, tile) {
+  var productDiv = document.createElement('div');
+  productDiv.style.width = '300px';
+  productDiv.style.height = '300px';
+  productDiv.style.display = 'inline-block';
+  productDiv.style.textAlign = 'center';
+  productDiv.style.padding = '8px';
+
+  var productImage = document.createElement('img');
+  productImage.setAttribute('src', product.productImage.url + '?maxW=500&maxH=500');
+  productImage.style.maxWidth = '100%';
+  productImage.style.maxHeight = '100%';
+
+  var debugDiv = document.createElement('div');
+  debugDiv.style.textAlign = 'center';
+  debugDiv.style.width = '100%';
+
+  var colorDistanceParagraph = document.createElement('p');
+  colorDistanceParagraph.innerText = 'Color Distance: ' + product.productImage.imageScores[tile].toFixed(2);
+
+  var colorDistributionDivWidth = 200;
+  var colorDistributionDiv = document.createElement('div');
+  colorDistributionDiv.style.width = colorDistributionDivWidth + 'px';
+  colorDistributionDiv.style.display = 'inline-block';
+
+  var totalShares = 0;
+  product.productImage.colorDistribution.colorDistributionEntries.forEach(function (colorDistributionEntry) {
+    totalShares += colorDistributionEntry.share;
+  });
+
+  product.productImage.colorDistribution.colorDistributionEntries.forEach(function (colorDistributionEntry) {
+    var color = colorDistributionEntry.color;
+    var colorString = 'rgb(' + color.r + ',' + color.g + ',' + color.b + ')';
+    var colorDistributionEntryDiv = document.createElement('div');
+    colorDistributionEntryDiv.style.backgroundColor = colorString;
+    colorDistributionEntryDiv.style.width = Math.floor(colorDistributionEntry.share / totalShares * 200) + 'px';
+    colorDistributionEntryDiv.style.height = '30px';
+    colorDistributionEntryDiv.style.display = 'inline-block';
+    colorDistributionDiv.appendChild(colorDistributionEntryDiv);
+  });
+
+  debugDiv.appendChild(colorDistanceParagraph);
+  debugDiv.appendChild(colorDistributionDiv);
+
+  productDiv.appendChild(productImage);
+  productDiv.appendChild(debugDiv);
+
+  return productDiv;
+}
+
+[].forEach.call(document.getElementsByClassName('hueColorTile'), function (hueColorTile) {
+  hueColorTile.addEventListener('click', function (event) {
+    [].forEach.call(document.getElementsByClassName('colorSelectionRow'), function (row) {
+      row.style.display = 'none';
+    });
+
+    var rowToShow = document.querySelectorAll('[data-hue-tile="' + event.target.getAttribute('data-hue').split('_')[0] + '"]')[0];
+    rowToShow.style.display = 'block';
+  });
+});
+
+[].forEach.call(document.getElementsByClassName('colorTile'), function (colorTile) {
+  colorTile.addEventListener('click', function (event) {
+    var request = new XMLHttpRequest();
+
+    var clickedTile = event.target.getAttribute('data-color-tile');
+    request.open("GET", 'http://localhost:8090/search/products?colorTile=' + clickedTile, true);
+    request.onreadystatechange = function () {
+      if (request.readyState === 4 && request.status === 200) {
+        var productsToDisplay = JSON.parse(request.responseText);
+        var productArea = document.getElementById('productArea');
+        productArea.innerHTML = '';
+        productsToDisplay.forEach(function (product) {
+          var productNode = generateProductNode(product, clickedTile);
+          productArea.appendChild(productNode);
+        })
+      }
+    };
+    request.send(null);
+
+  });
+});
+</script>
+</body>
+</html>
