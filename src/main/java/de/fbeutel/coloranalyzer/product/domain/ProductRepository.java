@@ -31,7 +31,7 @@ class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
   public List<Product> findAllSortedByColor(final String selectedColor) {
     final String fieldName = "productImage.imageScores." + selectedColor;
     final Query query = new Query();
-    query.addCriteria(new Criteria().andOperator(Criteria.where(fieldName).exists(true), Criteria.where(fieldName).lt(3)));
+    query.addCriteria(new Criteria().andOperator(Criteria.where(fieldName).exists(true), Criteria.where(fieldName).lt(10)));
     query.with(Sort.by(asc(fieldName)));
 
     return mongoTemplate.find(query, Product.class);
